@@ -1,12 +1,4 @@
-# codeheat-cli
-> A CLI for CodeHeat. Get all the information you need about CodeHeat.
+# codeheat-cli : Command-line tool for winning Codeheat
 
-##### Preferred Language : `Python`
-
-
-#### Features :
-
-* Listing Top Contributors
-* Helping on finding active maintainers. For specific projects.
-* Showing last year PRs, Members, _et cetera_.
+> Tool to get all the information you need about Codeheat Coding Contest of FOSSASIA to get an edge over your competitors.
 
