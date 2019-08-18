@@ -42,7 +42,8 @@ popauth = [
 ]
 
 def validate(username, password):
-
+    if username == "" or password == "":
+        return False
     r = requests.get('https://api.github.com', auth=(username, password))
     if r.status_code == 200:
         return True
