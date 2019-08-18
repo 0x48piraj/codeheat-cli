@@ -3,7 +3,11 @@
 from __future__ import print_function, unicode_literals
 from PyInquirer import style_from_dict, Token, prompt, Separator, Validator, ValidationError
 from github import Github
-import os, sys, argparse, textwrap, requests
+import os, sys, argparse, textwrap, requests, datetime
+
+"""CODEHEAT RUNS FROM SEPTEMBER 10TH, 2018 TO FEBRUARY 1ST, 2019"""
+now = datetime.datetime.now()
+CODEHEAT_START, CODEHEAT_END = datetime.date(now.year, 9, 10), datetime.date(now.year + 1, 2, 1)
 
 ORG_NAME = 'fossasia'
 REPOS =  [["connfa-android", "open-event-wsgen", "open-event-frontend", "open-event-organizer-android", "open-event-attendee-android", "open-event-ios", "open-event-legacy", "open-event-scraper", "open-event-server", "open-event-orga-iOS", "open-event-theme", "event-collect", "open-event-droidgen", "open-event"],
@@ -38,6 +42,7 @@ popauth = [
 ]
 
 def validate(username, password):
+
     r = requests.get('https://api.github.com', auth=(username, password))
     if r.status_code == 200:
         return True
@@ -66,7 +71,12 @@ else:
     print("No parameter was provided, exiting ...")
     sys.exit(1)
 
-def handle(answers):
+
+def get_status(ghwd):
+    ghwd
+
+
+def handle(answers, g):
     main, sub = answers['init'], answers['opts']
     if main == 'My status':
         get_status(g)
@@ -124,5 +134,11 @@ questions = [
     },
 ]
 
-answers = prompt(questions)
-handle(answers)
+
+if CODEHEAT_START < datetime.date(now.year, now.month, now.day) < CODEHEAT_START:
+    answers = prompt(questions)
+    RATE = g.ratelimit_remaining
+    handle(answers, g)
+else:
+    print("[*] Codeheat period has not started yet. Exiting.")
+    sys.exit(1)
