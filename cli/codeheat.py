@@ -6,9 +6,9 @@ from github import Github
 import github3
 import os, sys, argparse, textwrap, requests, datetime, operator
 
-"""CODEHEAT RUNS FROM SEPTEMBER 10TH, 2018 TO FEBRUARY 1ST, 2019"""
+"""CODEHEAT RUNS FROM SEPTEMBER 15, 2019 TO FEBRUARY 2, 2020"""
 now = datetime.datetime.now()
-CODEHEAT_START, CODEHEAT_END = datetime.datetime(now.year, 9, 10), datetime.datetime(now.year + 1, 2, 1)
+CODEHEAT_START, CODEHEAT_END = datetime.datetime(now.year, 9, 15), datetime.datetime(now.year + 1, 2, 2)
 
 ORG_NAME = 'fossasia'
 REPOS =  [["connfa-android", "open-event-wsgen", "open-event-frontend", "open-event-organizer-android", "open-event-attendee-android", "open-event-ios", "open-event-legacy", "open-event-scraper", "open-event-server", "open-event-orga-iOS", "open-event-theme", "event-collect", "open-event-droidgen", "open-event"],
@@ -24,7 +24,7 @@ banner = textwrap.dedent('''\
 parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=banner)
 optional = parser._action_groups.pop() # popped opt args
 optional = parser.add_argument_group('Options')
-optional.add_argument("-c", "--cred", dest="creds", action='store_true', help= "for providing Github credentials (username and password)")
+optional.add_argument("-c", "--cred", dest="creds", action='store_true', help= "for providing Github credentials")
 optional.add_argument("-t", "--token", dest="token", action='store_true', help= "for providing Github Developer Token")
 bools = parser.parse_args()
 print(banner)
@@ -42,8 +42,11 @@ popauth = [
     }
 ]
 
+#def get_insights(json):
+    # json that has data of 2018, 2017, 2016, etc.
+
 def validate(username, password):
-    if username == "" or password == "":
+    if not username or not password:
         return False
     r = requests.get('https://api.github.com', auth=(username, password))
     if r.status_code == 200:
@@ -56,7 +59,7 @@ if bools.token == True:
     print("[*] Enter the Github dev token ...")
     access_token = input("    ----> ")
     g = Github(access_token) # try, catch
-    g3 = github3.login(token=access_token) 
+    g3 = github3.login(token=access_token)
     print('\n')
 elif bools.creds == True:
     print("[*] Credentials param was selected ...")
@@ -66,7 +69,8 @@ elif bools.creds == True:
     if gbool == True:
         g = Github(creds['username'], creds['password'])
         g3 = github3.login(creds['username'], password=creds['password'])
-        print("[+] Login successful, Github instance correctly initialized.")
+        print("[+] Login successful")
+        print("[+] Github instance correctly initialized.")
     else:
         print("[!] Wrong credentials, exiting ...")
         sys.exit(1)
@@ -80,7 +84,8 @@ def ccontributors(data): # current year's contributors, func:tested
     for prop in data:
         try:
             cname, date = prop
-            if CODEHEAT_START < date < CODEHEAT_START:
+            #date = date.replace(second=0, microsecond=0, minute=0, hour=0)
+            if CODEHEAT_START < date < CODEHEAT_END:
                  codeheat_contrib.append(prop)
         except:
             codeheat_contrib.append(prop) # appends seperators, eg. meilix ...
@@ -92,7 +97,7 @@ def get_status(uname, data): # func:tested
     for prop in data:
         try:
             cname, date = prop
-            if cname == uname:  # BUG : username and name compare, will not work
+            if cname == uname:
                  counter += 1
         except:
             print("%s contributions in %s\n\n" % (counter, prop))
@@ -101,8 +106,9 @@ def get_status(uname, data): # func:tested
 
 def handle(answers, g):
     main, sub = answers['init'], answers['opts']
+    print(answers)
     if main == 'My status':
-        get_status(creds['username'], curr_contrib)
+        get_status(g.get_user().login, curr_contrib)
     elif main == 'Top contributors':
         if sub == 'Overall':
             top_contributors(g, opt)
@@ -114,7 +120,7 @@ def handle(answers, g):
         else:
             active_maintainers(g, opt)
     elif main == 'Insights':
-        get_insights()
+        get_insights(JSON)
 
 
 def options(answers):
@@ -160,15 +166,15 @@ questions = [
 def worker(g, org, repos):
     authors = []
     for repo in repos:
-        for r in repo:
-            repo = g.get_organization(org).get_repo(r)
-            for commit in repo.get_commits():
-                authors.append((commit.commit.author.name, commit.commit.author.date))
+        repo = g.get_organization(org).get_repo(repo)
+        for commit in repo.get_commits():
+            authors.append((commit.commit.author.name, commit.commit.author.date))
     return authors
 
-if CODEHEAT_START < datetime.datetime(now.year, now.month, now.day) < CODEHEAT_START:
+if CODEHEAT_START < datetime.datetime(now.year, now.month, now.day) < CODEHEAT_END:
     answers = prompt(questions)
-    all_contributors = worker(g, ORG, REPOS[2]) + ['meilix'] + worker(g, ORG, REPOS[0]) + ['open_event'] + worker(g, ORG, REPOS[1]) + ['pslab'] + worker(g, ORG, REPOS[3]) + ['phimpme'] + worker(g, ORG, REPOS[4]) + ['susper'] + worker(g, ORG, REPOS[5]) + ['badgeyay'] + worker(g, ORG, REPOS[6]) + ['yaydoc']
+    handle(answers, g)
+    all_contributors = worker(g, ORG_NAME, REPOS[2]) + ['meilix'] + worker(g, ORG_NAME, REPOS[0]) + ['open_event'] + worker(g, ORG_NAME, REPOS[1]) + ['pslab'] + worker(g, ORG_NAME, REPOS[3]) + ['phimpme'] + worker(g, ORG_NAME, REPOS[4]) + ['susper'] + worker(g, ORG_NAME, REPOS[5]) + ['badgeyay'] + worker(g, ORG_NAME, REPOS[6]) + ['yaydoc']
     # meilix, openevent, pslab, phimpme, susper, badgeyay, yaydoc list
     curr_contrib = ccontributors(all_contributors) # format : [(contributor), (date), ..., 'repo', ...] if len(curr_contrib) == 7 : no contributors
     print("[*] Number of Requests : {}".format(g.ratelimit_remaining))
