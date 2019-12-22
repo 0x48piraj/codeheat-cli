@@ -3,7 +3,7 @@
 from __future__ import print_function, unicode_literals
 from PyInquirer import style_from_dict, Token, prompt, Separator, Validator, ValidationError
 from github import Github
-import github3
+import github3, webbrowser
 import os, sys, argparse, textwrap, requests, datetime, operator
 from threading import Thread
 
@@ -62,7 +62,7 @@ popauth = [
 
 def options(answers):
     options = []
-    mappings = {'Insights':['Yes', 'No'], 'My status':['Yes', 'No'], 'Top contributors':['Overall', 'By project'], 'Active maintainers':['Overall', 'By project']}
+    mappings = {'Scrum Helper':['Visit Project', 'No'], 'Insights':['Yes', 'No'], 'My status':['Yes', 'No'], 'Top contributors':['Overall', 'By project'], 'Active maintainers':['Overall', 'By project']}
     options.extend(mappings[answers['init']])
     return options
 
@@ -76,6 +76,11 @@ questions = [
             'Top contributors',
             'Active maintainers',
             Separator(),
+            'Scrum Helper',
+            {
+                'name': 'Automatically put together Scrums based on your GitHub contributions',
+                'disabled': 'https://github.com/fossasia/scrum_helper'
+            },
             'Insights',
             {
                 'name': 'Fun facts',
@@ -141,7 +146,8 @@ def handle(answers, g):
             active_maintainers(g, opt)
     elif answers['init'] == 'Insights':
         get_insights(JSON)
-
+    elif answers['init'] == 'Scrum Helper' and answers['opts'] == 'Visit Project':
+        webbrowser.open('https://github.com/fossasia/scrum_helper')
 
 # https://developer.github.com/v3/repos/statistics/
 
@@ -199,6 +205,8 @@ if CODEHEAT_START < datetime.datetime(now.year, now.month, now.day) < CODEHEAT_E
     t7 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[6],))
     t7.start()
     answers = prompt(questions)
+    # handle(answers, g)
+    
     # Loading bar until all threads finished, progressbar()
     # wait till all data gets fetched, if t1.is_alive()
     print("[*] Grabbing, please wait.")    
