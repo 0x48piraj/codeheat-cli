@@ -5,13 +5,16 @@ from PyInquirer import style_from_dict, Token, prompt, Separator, Validator, Val
 from github import Github
 import github3
 import os, sys, argparse, textwrap, requests, datetime, operator
+from threading import Thread
 
 """CODEHEAT RUNS FROM SEPTEMBER 15, 2019 TO FEBRUARY 2, 2020"""
 now = datetime.datetime.now()
 CODEHEAT_START, CODEHEAT_END = datetime.datetime(now.year, 9, 15), datetime.datetime(now.year + 1, 2, 2)
 
 ORG_NAME = 'fossasia'
-REPOS =  [["connfa-android", "open-event-wsgen", "open-event-frontend", "open-event-organizer-android", "open-event-attendee-android", "open-event-ios", "open-event-legacy", "open-event-scraper", "open-event-server", "open-event-orga-iOS", "open-event-theme", "event-collect", "open-event-droidgen", "open-event"],
+
+# ORDER: open-event, pslab, meilix, phimpme, susper, badgeyay, yaydoc
+REPOS =  [["open-event-wsgen", "open-event-frontend", "open-event-organizer-android", "open-event-attendee-android", "open-event-ios", "open-event-legacy", "open-event-scraper", "open-event-server", "open-event-orga-iOS", "open-event-theme", "event-collect", "open-event-droidgen", "open-event"],
          ['pslab-desktop', 'pslab-android', 'pslab-python', 'pslab-firmware', 'pslab.io', 'pslab-webapp', 'pslab-hardware', 'pslab-documentation', 'pslab-case', 'pslab-expeyes', 'pslab-artwork', 'pslab-iOS', 'in.pslab.io', 'jp.pslab.io'],
          ["meilix.org", "meilix-systemlock", "meilix-artwork", "meilix-generator", "meilix"], ["phimpme-android"], ["susper.com"], ["badge-magic-android", "badgeyay"], ["yaydoc"]]
 
@@ -29,6 +32,21 @@ optional.add_argument("-t", "--token", dest="token", action='store_true', help= 
 bools = parser.parse_args()
 print(banner)
 
+
+class retCThread(Thread): # https://stackoverflow.com/a/6894023
+    def __init__(self, group=None, target=None, name=None,
+                 args=(), kwargs={}, Verbose=None):
+        Thread.__init__(self, group, target, name, args, kwargs)
+        self._return = None
+    def run(self):
+        if self._target is not None:
+            self._return = self._target(*self._args,
+                                                **self._kwargs)
+    def join(self, *args):
+        Thread.join(self, *args)
+        return self._return
+
+
 popauth = [
     {
         'type': 'input',
@@ -42,8 +60,36 @@ popauth = [
     }
 ]
 
-#def get_insights(json):
-    # json that has data of 2018, 2017, 2016, etc.
+def options(answers):
+    options = []
+    mappings = {'Insights':['Yes', 'No'], 'My status':['Yes', 'No'], 'Top contributors':['Overall', 'By project'], 'Active maintainers':['Overall', 'By project']}
+    options.extend(mappings[answers['init']])
+    return options
+
+questions = [
+    {
+        'type': 'list',
+        'name': 'init',
+        'message': 'Enter option : ',
+        'choices': [
+            'My status',
+            'Top contributors',
+            'Active maintainers',
+            Separator(),
+            'Insights',
+            {
+                'name': 'Fun facts',
+                'disabled': 'Under construction at this time'
+            }
+        ]
+    },
+    {
+        'type': 'rawlist',
+        'name': 'opts',
+        'message': '',
+        'choices': options,
+    },
+]
 
 def validate(username, password):
     if not username or not password:
@@ -79,6 +125,31 @@ else:
     print("No parameter was provided (use [-h] flag for help), exiting ...")
     sys.exit(1)
 
+
+def handle(answers, g):
+    if answers['init'] == 'My status':
+        get_status(g.get_user().login, curr_contrib)
+    elif answers['init'] == 'Top contributors':
+        if answers['opts'] == 'Overall':
+            top_contributors(g, opt)
+        else:
+            top_contributors(g, opt)
+    elif answers['init'] == 'Active maintainers':
+        if answers['opts'] == 'Overall':
+            active_maintainers(g, opt)
+        else:
+            active_maintainers(g, opt)
+    elif answers['init'] == 'Insights':
+        get_insights(JSON)
+
+
+# https://developer.github.com/v3/repos/statistics/
+
+#def get_insights(json):
+    # json that has data of 2018, 2017, 2016, etc.
+
+# curl -H "Accept: application/vnd.github.v3+json" https://api.github.com/repos/git/git/commits?sha=master&since=2019-03-18T11:00:00Z
+# `since` and `until`
 def ccontributors(data): # current year's contributors, func:tested
     codeheat_contrib = []
     for prop in data:
@@ -104,78 +175,41 @@ def get_status(uname, data): # func:tested
             counter = 0
             pass
 
-def handle(answers, g):
-    main, sub = answers['init'], answers['opts']
-    print(answers)
-    if main == 'My status':
-        get_status(g.get_user().login, curr_contrib)
-    elif main == 'Top contributors':
-        if sub == 'Overall':
-            top_contributors(g, opt)
-        else:
-            top_contributors(g, opt)
-    elif main == 'Active maintainers':
-        if sub == 'Overall':
-            active_maintainers(g, opt)
-        else:
-            active_maintainers(g, opt)
-    elif main == 'Insights':
-        get_insights(JSON)
-
-
-def options(answers):
-    options = []
-    if answers['init'] == 'My status':
-        print('Are you sure to continue ?')
-        options.extend(['Yes', 'No'])
-    elif answers['init'] == 'Top contributors':
-        options.extend(['Overall', 'By project'])
-    elif answers['init'] == 'Active maintainers':
-        options.extend(['Overall', 'By project'])
-    elif answers['init'] == 'Insights':
-        print('Are you sure to continue ?')
-        options.extend(['Yes', 'No'])
-    return options
-
-
-questions = [
-    {
-        'type': 'list',
-        'name': 'init',
-        'message': 'Enter option : ',
-        'choices': [
-            'My status',
-            'Top contributors',
-            'Active maintainers',
-            Separator(),
-            'Insights',
-            {
-                'name': 'Fun facts',
-                'disabled': 'Under construction at this time'
-            }
-        ]
-    },
-    {
-        'type': 'rawlist',
-        'name': 'opts',
-        'message': '',
-        'choices': options,
-    },
-]
-
-def worker(g, org, repos):
+def total_commits(handler, org, repos):
     authors = []
     for repo in repos:
-        repo = g.get_organization(org).get_repo(repo)
+        repo = handler.get_organization(org).get_repo(repo)
         for commit in repo.get_commits():
             authors.append((commit.commit.author.name, commit.commit.author.date))
     return authors
 
 if CODEHEAT_START < datetime.datetime(now.year, now.month, now.day) < CODEHEAT_END:
+    t1 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[0],))
+    t1.start()
+    t2 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[1],))
+    t2.start()
+    t3 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[2],))
+    t3.start()
+    t4 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[3],))
+    t4.start()
+    t5 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[4],))
+    t5.start()
+    t6 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[5],))
+    t6.start()
+    t7 = retCThread(target=total_commits, args=(g, ORG_NAME, REPOS[6],))
+    t7.start()
     answers = prompt(questions)
-    handle(answers, g)
-    all_contributors = worker(g, ORG_NAME, REPOS[2]) + ['meilix'] + worker(g, ORG_NAME, REPOS[0]) + ['open_event'] + worker(g, ORG_NAME, REPOS[1]) + ['pslab'] + worker(g, ORG_NAME, REPOS[3]) + ['phimpme'] + worker(g, ORG_NAME, REPOS[4]) + ['susper'] + worker(g, ORG_NAME, REPOS[5]) + ['badgeyay'] + worker(g, ORG_NAME, REPOS[6]) + ['yaydoc']
-    # meilix, openevent, pslab, phimpme, susper, badgeyay, yaydoc list
+    # Loading bar until all threads finished, progressbar()
+    # wait till all data gets fetched, if t1.is_alive()
+    print("[*] Grabbing, please wait.")    
+    data = { "openevent":t1.join(), "pslab":t2.join(), "meilix":t3.join(), "phimpme":t4.join(), "susper":t5.join(), "badgeyay":t6.join(), "yaydoc":t7.join() }
+    # saving the data for time being
+    f = open("data", "w")
+    f.write(data)
+    f.close()
+    # CHECK THE DATA/DATA AND SHOW THE RESULTS
+    # all_contributors = worker(g, ORG_NAME, REPOS[2]) + ['meilix'] + worker(g, ORG_NAME, REPOS[0]) + ['open_event'] + worker(g, ORG_NAME, REPOS[1]) + ['pslab'] + worker(g, ORG_NAME, REPOS[3]) + ['phimpme'] + worker(g, ORG_NAME, REPOS[4]) + ['susper'] + worker(g, ORG_NAME, REPOS[5]) + ['badgeyay'] + worker(g, ORG_NAME, REPOS[6]) + ['yaydoc']
+    all_contributors = data['openevent'] + data['pslab'] + data['meilix'] + data['phimpme'] + data['susper'] + data['badgeyay'] + data['yaydoc']
     curr_contrib = ccontributors(all_contributors) # format : [(contributor), (date), ..., 'repo', ...] if len(curr_contrib) == 7 : no contributors
     print("[*] Number of Requests : {}".format(g.ratelimit_remaining))
     handle(answers, g)
